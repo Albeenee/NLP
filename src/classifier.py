@@ -27,6 +27,7 @@ class Classifier:
     def __init__(self, ollama_url: str):
         """
         This should create and initialize the model.
+        This should create and initialize the model.
         !!!!! If the approach you have choosen is in-context-learning with an LLM from Ollama, you should initialize
          the ollama client here using the 'ollama_url' that is provided (please do not use your own ollama
          URL!)
