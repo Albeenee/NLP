@@ -5,14 +5,15 @@ from torch.utils.data import DataLoader
 import pandas as pd
 from datasets import Dataset
 from transformers import RobertaTokenizer, TrainingArguments, Trainer, DataCollatorWithPadding
+from peft import get_peft_model, LoraConfig, TaskType
 
 import numpy as np
 import os
 
 from transformers import RobertaConfig
 
-from create_dataset import create_dataset
-from model import RobertaForWeightedClassification
+from create_dataset import create_dataset, insert_word_tags
+from model import RobertaForTaggedWordClassification
 from compute_metrics import compute_metrics
 
 
@@ -44,11 +45,9 @@ class Classifier:
         self.label2id = {}
         self.id2label = {}
 
-        os.environ["WANDB_MODE"] = "disabled"
-        self.device = torch.device("cpu") # default
+        self.device = "mps" if torch.cuda.is_available() else "cpu"
         
 
-    
     
     def train(self, train_filename: str, dev_filename: str, device: torch.device):
         """
@@ -71,8 +70,6 @@ class Classifier:
         df = pd.read_csv(train_filename, delimiter='\t', on_bad_lines='skip',
                          header=None, names=['label', 'catégorie', 'heure', 'origin', 'texte'])
 
-
-
         # PREPROCESSING DF
         df['input'] = df['catégorie'].astype(str) + ' : ' + df['texte'].astype(str)
         df = df.dropna(subset=['input', 'label'])
@@ -83,18 +80,35 @@ class Classifier:
         self.id2label = {i: label for label, i in self.label2id.items()}
         df['label'] = df['label'].map(self.label2id)
 
-        # Create datasets
-        train_ds, test_ds, data_collator, class_weights_tensor = create_dataset(df, labels, HF_TOKEN)
+        tokenizer = RobertaTokenizer.from_pretrained("roberta-large", token=HF_TOKEN)
+        tokenizer.add_tokens(["<W>", "</W>"])
 
+        # Create datasets
+        train_ds, test_ds, data_collator, class_weights_tensor = create_dataset(df, labels, tokenizer)
 
         # Model and tokenizer
         config = RobertaConfig.from_pretrained("roberta-base", num_labels=len(labels))
+        
 
-        self.model = RobertaForWeightedClassification.from_pretrained(
+
+        '''lora_config = LoraConfig(
+              r=16,
+              lora_alpha=32,
+              target_modules=["query", "value"],  # works well for transformers
+              lora_dropout=0.1,
+              bias="none",
+              task_type=TaskType.SEQ_CLS
+        )'''
+
+
+        self.model = RobertaForTaggedWordClassification.from_pretrained(
             "roberta-base",
             config=config,
+            tokenizer=tokenizer,
             class_weights=class_weights_tensor
-        ).to(device)
+        )
+
+        self.model.resize_token_embeddings(len(tokenizer))
 
         training_args = TrainingArguments(
             output_dir="./results",
@@ -102,16 +116,15 @@ class Classifier:
             learning_rate=2e-5,
             per_device_train_batch_size=8,
             per_device_eval_batch_size=8,
-            num_train_epochs=3,
+            num_train_epochs=10,
             weight_decay=0.01,
             logging_dir="./logs",
             logging_steps=10,
             save_strategy="no",
-            report_to=None,
-            remove_unused_columns=False
+            report_to=None,  # Désactiver WandB
+            remove_unused_columns=False  # Désactiver la suppression des colonnes non utilisées
         )
 
-        data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
 
         self.trainer = Trainer(
             model=self.model,
@@ -119,7 +132,7 @@ class Classifier:
             train_dataset=train_ds,
             eval_dataset=test_ds,
             compute_metrics=compute_metrics,
-            data_collator=data_collator,
+            data_collator=data_collator,  # remplace l'ancien tokenizer
         )
 
         self.trainer.train()
@@ -138,14 +151,17 @@ class Classifier:
 
         df = pd.read_csv(data_filename, delimiter='\t', on_bad_lines='skip',
                      header=None, names=['label', 'catégorie', 'heure', 'origin', 'texte'])
+        
+
+        df["texte"] = df.apply(insert_word_tags, axis=1)
     
         df['input'] = df['catégorie'].astype(str) + ' : ' + df['texte'].astype(str)
-        df = df.dropna(subset=['input'])
+        df = df.dropna(subset=['input', 'label'])
 
         pred_ds = Dataset.from_pandas(df[['input']])
 
         def tokenize_function(example):
-            return self.tokenizer(example["input"], padding="max_length", truncation=True)
+            return self.tokenizer(example["input"], padding="max_length", truncation=True, return_attention_mask=True)
 
         pred_ds = pred_ds.map(tokenize_function, batched=False)
         pred_ds = pred_ds.remove_columns([col for col in pred_ds.column_names if col not in ['input_ids', 'attention_mask']])

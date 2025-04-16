@@ -5,14 +5,21 @@ from datasets import Dataset
 from transformers import RobertaTokenizer, DataCollatorWithPadding
 
 
+def insert_word_tags(row):
+    word = row["word"]
+    text = row["texte"]
+    # encadre la première occurrence exacte du mot
+    if word in text:
+        return text.replace(word, f"<W>{word}</W>", 1)
+    else:
+        return "ERROR"  # fallback si le mot n'est pas trouvé
 
 
-def create_dataset(df, labels, hf_token):
+def create_dataset(df, labels, tokenizer):
 
     # Séparer les données en train/test sans sklearn
     train_df = df[:int(0.8 * len(df))]
     test_df = df[int(0.8 * len(df)):]
-
 
     # Calcul des poids inverses de fréquence
     label_counts = Counter(train_df['label'])
@@ -27,8 +34,6 @@ def create_dataset(df, labels, hf_token):
     test_ds = Dataset.from_pandas(test_df[['input', 'label']])
 
     # TOKENIZATION
-    tokenizer = RobertaTokenizer.from_pretrained("roberta-base", token=hf_token)
-
     def tokenize(example):
         tokens = tokenizer(
             example["input"],
