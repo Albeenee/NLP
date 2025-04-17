@@ -1,6 +1,8 @@
 from transformers import RobertaTokenizer, RobertaForSequenceClassification 
 import torch
 from torch.nn import CrossEntropyLoss
+from types import SimpleNamespace
+
 
 class RobertaForTaggedWordClassification(RobertaForSequenceClassification):
     def __init__(self, config, tokenizer, class_weights=None):
@@ -52,5 +54,5 @@ class RobertaForTaggedWordClassification(RobertaForSequenceClassification):
 
         if labels is not None:
             loss = self.loss_fct(logits, labels)
-            return loss, logits
-        return logits
+            return (loss, logits)
+        return SimpleNamespace(logits=logits)

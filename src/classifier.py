@@ -16,6 +16,10 @@ from create_dataset import create_dataset, insert_word_tags
 from model import RobertaForTaggedWordClassification
 from compute_metrics import compute_metrics
 
+import os
+
+hf_token = os.getenv("HF_TOKEN")
+
 
 class Classifier:
     """
@@ -36,10 +40,9 @@ class Classifier:
         be defined and initialized here.
         """
 
-        HF_TOKEN = 'XXX'
         os.environ["WANDB_MODE"] = "disabled"
 
-        self.tokenizer = RobertaTokenizer.from_pretrained("roberta-base", token=HF_TOKEN)
+        self.tokenizer = RobertaTokenizer.from_pretrained("roberta-base", token=hf_token)
         self.model = None  # Initialized during train()
         self.trainer = None
         self.label2id = {}
@@ -64,11 +67,10 @@ class Classifier:
         """
 
         self.device = device
-        HF_TOKEN= 'XXX'
 
         # Load the dataset
         df = pd.read_csv(train_filename, delimiter='\t', on_bad_lines='skip',
-                         header=None, names=['label', 'catégorie', 'heure', 'origin', 'texte'])
+                         header=None, names=['label', 'catégorie', 'word', 'heure', 'texte'])
 
         # PREPROCESSING DF
         df['input'] = df['catégorie'].astype(str) + ' : ' + df['texte'].astype(str)
@@ -80,7 +82,7 @@ class Classifier:
         self.id2label = {i: label for label, i in self.label2id.items()}
         df['label'] = df['label'].map(self.label2id)
 
-        tokenizer = RobertaTokenizer.from_pretrained("roberta-large", token=HF_TOKEN)
+        tokenizer = RobertaTokenizer.from_pretrained("roberta-large", token=hf_token)
         tokenizer.add_tokens(["<W>", "</W>"])
 
         # Create datasets
@@ -143,14 +145,14 @@ class Classifier:
         Returns the list of predicted labels
         PLEASE:
           - DO NOT CHANGE THE SIGNATURE OF THIS METHOD
-        If the approach you have choosen is in-context-learning with an LLM from Ollama, ignore the 'device'
+        If the approach you have choosen is in-context-learning with an LLM from Ollama, ignore the '  '
         parameter (because the device is specified when launching the Ollama server, and not by the client side)
         Otherwise:
           - PUT THE MODEL and DATA on the specified device! Do not use another device
         """
 
         df = pd.read_csv(data_filename, delimiter='\t', on_bad_lines='skip',
-                     header=None, names=['label', 'catégorie', 'heure', 'origin', 'texte'])
+                     header=None, names=['label', 'catégorie', 'word', 'heure', 'texte'])
         
 
         df["texte"] = df.apply(insert_word_tags, axis=1)
