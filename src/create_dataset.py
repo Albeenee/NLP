@@ -9,32 +9,32 @@ from transformers import DataCollatorWithPadding
 def insert_word_tags(row):
     word = row["word"]
     text = row["texte"]
-    # encadre la première occurrence exacte du mot
+    # Insertion des balises <W> et </W> autour du mot
     if word in text:
         return text.replace(word, f"<W>{word}</W>", 1)
     else:
-        return "ERROR"  # fallback si le mot n'est pas trouvé
+        return "ERROR"  # fallback to "ERROR" if the word is not found
 
 
 def create_dataset(df, tokenizer):
 
-    # Fusion des colonnes pour l'entrée texte
+    # Join the word and text columns with <W> and </W> tags
     df['input'] = df['catégorie'].astype(str) + ' : ' + df['texte'].astype(str)
 
-    # Suppression des lignes incomplètes
+    # Suppress rows with NaN values in 'input' or 'label'
     df = df.dropna(subset=['input', 'label'])
 
-    # Encodage des labels
+    # Encoding labels
     labels = df['label'].unique()
     label2id = {label: i for i, label in enumerate(labels)}
     id2label = {i: label for label, i in label2id.items()}
     df['label'] = df['label'].map(label2id)
 
-    # Séparer les données en train/test sans sklearn
+    # Split the dataset into train and test sets
     train_df = df[:int(0.8 * len(df))]
     test_df = df[int(0.8 * len(df)):]
 
-    # Calcul des poids inverses de fréquence
+    # Compute class weights
     label_counts = Counter(train_df['label'])
     total_count = sum(label_counts.values())
     class_weights = [total_count / label_counts[i] for i in range(len(labels))]
@@ -42,11 +42,12 @@ def create_dataset(df, tokenizer):
 
 
 
-    # Convertir en Dataset
+    # Convert into dataset
     train_ds = Dataset.from_pandas(train_df[['input', 'label', 'word']])
     test_ds = Dataset.from_pandas(test_df[['input', 'label', 'word']])
 
-    # 2. Tokenization
+
+    # Tokenization
     def tokenize(example):
         tokens = tokenizer(
             example["input"],
@@ -59,7 +60,6 @@ def create_dataset(df, tokenizer):
 
     train_ds = train_ds.map(tokenize, batched=False)
     test_ds = test_ds.map(tokenize, batched=False)
-
 
 
     # Suppress input column
@@ -78,5 +78,5 @@ def create_dataset(df, tokenizer):
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
 
-    return train_ds, test_ds, data_collator, class_weights_tensor, len(labels)
+    return train_ds, test_ds, data_collator, class_weights_tensor, len(labels), label2id, id2label
 

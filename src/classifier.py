@@ -12,9 +12,9 @@ import os
 
 from transformers import RobertaConfig
 
-from src.create_dataset import create_dataset, insert_word_tags
-from src.model import RobertaForTaggedWordClassification
-from src.compute_metrics import compute_metrics
+from create_dataset import create_dataset, insert_word_tags
+from model import RobertaForTaggedWordClassification
+from compute_metrics import compute_metrics
 hf_token = os.getenv("HF_TOKEN")
 
 
@@ -70,7 +70,9 @@ class Classifier:
         tokenizer.add_tokens(["<W>", "</W>"])
 
         # Create datasets
-        train_ds, test_ds, data_collator, class_weights_tensor, n_labels = create_dataset(df, tokenizer)
+        train_ds, test_ds, data_collator, class_weights_tensor, n_labels, label2id, id2label = create_dataset(df, tokenizer)
+        self.label2id = label2id
+        self.id2label = id2label
 
         # Model and tokenizer
         config = RobertaConfig.from_pretrained("roberta-base", num_labels=n_labels)
@@ -86,19 +88,22 @@ class Classifier:
         self.model.resize_token_embeddings(len(self.tokenizer))
         self.model.to(device)
 
+        print('device', self.model.parameters().__next__().device)
+        print('device', device)
+
         training_args = TrainingArguments(
             output_dir="./results",
             eval_strategy="epoch",
             learning_rate=2e-5,
             per_device_train_batch_size=8,
             per_device_eval_batch_size=8,
-            num_train_epochs=10,
+            num_train_epochs=1,
             weight_decay=0.01,
             logging_dir="./logs",
             logging_steps=10,
             save_strategy="no",
-            report_to=None,  # Désactiver WandB
-            remove_unused_columns=False  # Désactiver la suppression des colonnes non utilisées
+            report_to=None,  # Desactivate WandB
+            remove_unused_columns=False  # Desactivate warning
         )
 
 

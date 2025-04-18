@@ -7,7 +7,7 @@ from types import SimpleNamespace
 class RobertaForTaggedWordClassification(RobertaForSequenceClassification):
     def __init__(self, config, tokenizer, class_weights=None):
         super().__init__(config)
-        self.roberta = self.roberta  # le backbone RoBERTa
+        self.roberta = self.roberta 
         self.dropout = torch.nn.Dropout(config.hidden_dropout_prob)
         self.classifier = torch.nn.Linear(config.hidden_size, config.num_labels)
         self.tokenizer = tokenizer
@@ -26,11 +26,11 @@ class RobertaForTaggedWordClassification(RobertaForSequenceClassification):
 
         last_hidden_state = outputs.last_hidden_state  # (batch_size, seq_len, hidden_size)
 
-        # Trouver les positions des tokens <W> et </W>
+        # Find the start and end token IDs for <W> and </W>
         w_token_id = tokenizer.convert_tokens_to_ids("<W>")
         end_w_token_id = tokenizer.convert_tokens_to_ids("</W>")
 
-        # Pour chaque exemple du batch, on extrait l'embedding entre <W> et </W>
+        # For each example in the batch, find the start and end indices of the word
         batch_embeddings = []
 
         for i in range(input_ids.size(0)):
@@ -42,9 +42,9 @@ class RobertaForTaggedWordClassification(RobertaForSequenceClassification):
                 end_idx = (input_seq == end_w_token_id).nonzero(as_tuple=True)[0].item()
 
                 word_embeds = hidden_seq[start_idx:end_idx]  # (mot_length, hidden)
-                pooled = word_embeds.mean(dim=0)  # moyenne sur les tokens du mot
+                pooled = word_embeds.mean(dim=0)  # average pooling
             except Exception:
-                pooled = hidden_seq[0]  # fallback si les balises ne sont pas trouvées
+                pooled = hidden_seq[0]  # fallback to first token embedding
 
             batch_embeddings.append(pooled)
 

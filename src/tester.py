@@ -4,7 +4,7 @@ import argparse
 
 import torch
 
-from src.classifier import Classifier
+from classifier import Classifier
 
 
 def set_reproducible():
@@ -68,7 +68,8 @@ if __name__ == "__main__":
     argparser.add_argument('-g', '--gpu', help='GPU device id on which to run the model', type=int)
     argparser.add_argument('-o', '--ollama_url', help='Full URL of the ollama server (including port number), if any', type=str)
     args = argparser.parse_args()
-    device_name = "cpu" if args.gpu is None else "mps"
+    #device_name = "cpu" if args.gpu is None else f"cuda:{args.gpu}"
+    device_name = "cpu" if args.gpu is None else f"mps" # TO MODIDY
     device = torch.device(device_name)
     n_runs = args.n_runs
     set_reproducible()
@@ -95,9 +96,3 @@ if __name__ == "__main__":
     print("Mean Dev Acc.: %.2f (%.2f)" % (np.mean(devaccs), np.std(devaccs)))
     print("Mean Test Acc.: %.2f (%.2f)" % (np.mean(testaccs), np.std(testaccs)))
     print("\nExec time: %.2f s. ( %d per run )" % (total_exec_time, total_exec_time / n_runs))
-
-
-
-
-
-
