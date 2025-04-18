@@ -4,12 +4,8 @@ import torch
 from torch.utils.data import DataLoader
 import pandas as pd
 from datasets import Dataset
-<<<<<<< HEAD
 from transformers import RobertaTokenizer, TrainingArguments, Trainer
-=======
-from transformers import RobertaTokenizer, TrainingArguments, Trainer, DataCollatorWithPadding
-from peft import get_peft_model, LoraConfig, TaskType
->>>>>>> c2d45e43e2ea516171e7bebcced8afb2e3473606
+
 
 import numpy as np
 import os
@@ -19,12 +15,6 @@ from transformers import RobertaConfig
 from create_dataset import create_dataset, insert_word_tags
 from model import RobertaForTaggedWordClassification
 from compute_metrics import compute_metrics
-
-<<<<<<< HEAD
-=======
-import os
-
->>>>>>> c2d45e43e2ea516171e7bebcced8afb2e3473606
 hf_token = os.getenv("HF_TOKEN")
 
 
@@ -50,20 +40,12 @@ class Classifier:
         os.environ["WANDB_MODE"] = "disabled"
 
         self.tokenizer = RobertaTokenizer.from_pretrained("roberta-base", token=hf_token)
-<<<<<<< HEAD
         self.tokenizer.add_tokens(["<W>", "</W>"])
-=======
->>>>>>> c2d45e43e2ea516171e7bebcced8afb2e3473606
         self.model = None  # Initialized during train()
         self.trainer = None
         self.label2id = {}
         self.id2label = {}
-<<<<<<< HEAD
-=======
-
-        self.device = "mps" if torch.cuda.is_available() else "cpu"
->>>>>>> c2d45e43e2ea516171e7bebcced8afb2e3473606
-        
+      
 
     
     def train(self, train_filename: str, dev_filename: str, device: torch.device):
@@ -79,14 +61,6 @@ class Classifier:
          OF MODEL HYPERPARAMETERS
 
         """
-<<<<<<< HEAD
-        
-        print('running on device:', device)
-=======
-
-        self.device = device
-
->>>>>>> c2d45e43e2ea516171e7bebcced8afb2e3473606
         # Load the dataset
         df = pd.read_csv(train_filename, delimiter='\t', on_bad_lines='skip',
                          header=None, names=['label', 'catégorie', 'word', 'heure', 'texte'])
@@ -101,14 +75,6 @@ class Classifier:
         self.id2label = {i: label for label, i in self.label2id.items()}
         df['label'] = df['label'].map(self.label2id)
 
-<<<<<<< HEAD
-        # Create datasets
-        train_ds, test_ds, data_collator, class_weights_tensor = create_dataset(df, labels, self.tokenizer)
-
-
-        # Model and tokenizer
-        config = RobertaConfig.from_pretrained("roberta-base", num_labels=len(labels))
-=======
         tokenizer = RobertaTokenizer.from_pretrained("roberta-large", token=hf_token)
         tokenizer.add_tokens(["<W>", "</W>"])
 
@@ -119,35 +85,15 @@ class Classifier:
         config = RobertaConfig.from_pretrained("roberta-base", num_labels=len(labels))
         
 
-
-        '''lora_config = LoraConfig(
-              r=16,
-              lora_alpha=32,
-              target_modules=["query", "value"],  # works well for transformers
-              lora_dropout=0.1,
-              bias="none",
-              task_type=TaskType.SEQ_CLS
-        )'''
-
->>>>>>> c2d45e43e2ea516171e7bebcced8afb2e3473606
-
         self.model = RobertaForTaggedWordClassification.from_pretrained(
             "roberta-base",
             config=config,
-<<<<<<< HEAD
             tokenizer=self.tokenizer,
             class_weights=class_weights_tensor
         )
 
         self.model.resize_token_embeddings(len(self.tokenizer))
         self.model.to(device)
-=======
-            tokenizer=tokenizer,
-            class_weights=class_weights_tensor
-        )
-
-        self.model.resize_token_embeddings(len(tokenizer))
->>>>>>> c2d45e43e2ea516171e7bebcced8afb2e3473606
 
         training_args = TrainingArguments(
             output_dir="./results",
@@ -188,7 +134,6 @@ class Classifier:
           - PUT THE MODEL and DATA on the specified device! Do not use another device
         """
 
-<<<<<<< HEAD
         # Load and preprocess the data
         df = pd.read_csv(data_filename, delimiter='\t', on_bad_lines='skip',
                         header=None, names=['label', 'catégorie', 'word', 'heure', 'texte'])
@@ -225,39 +170,3 @@ class Classifier:
 
         # Convert IDs back to labels
         return [self.id2label[i] for i in pred_labels]
-=======
-        df = pd.read_csv(data_filename, delimiter='\t', on_bad_lines='skip',
-                     header=None, names=['label', 'catégorie', 'word', 'heure', 'texte'])
-        
-
-        df["texte"] = df.apply(insert_word_tags, axis=1)
-    
-        df['input'] = df['catégorie'].astype(str) + ' : ' + df['texte'].astype(str)
-        df = df.dropna(subset=['input', 'label'])
-
-        pred_ds = Dataset.from_pandas(df[['input']])
-
-        def tokenize_function(example):
-            return self.tokenizer(example["input"], padding="max_length", truncation=True, return_attention_mask=True)
-
-        pred_ds = pred_ds.map(tokenize_function, batched=False)
-        pred_ds = pred_ds.remove_columns([col for col in pred_ds.column_names if col not in ['input_ids', 'attention_mask']])
-        pred_ds.set_format("torch")
-
-        self.model.to(device)
-        self.model.eval()
-
-        dataloader = DataLoader(pred_ds, batch_size=8)
-
-        all_preds = []
-
-        with torch.no_grad():
-            for batch in dataloader:
-                batch = {k: v.to(device) for k, v in batch.items()}
-                outputs = self.model(**batch)
-                logits = outputs.logits
-                preds = torch.argmax(logits, dim=-1)
-                all_preds.extend(preds.cpu().numpy())
-
-        return [self.id2label[i] for i in all_preds]
->>>>>>> c2d45e43e2ea516171e7bebcced8afb2e3473606

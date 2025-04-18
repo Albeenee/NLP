@@ -54,11 +54,6 @@ class RobertaForTaggedWordClassification(RobertaForSequenceClassification):
 
         if labels is not None:
             loss = self.loss_fct(logits, labels)
-<<<<<<< HEAD
             return {"loss": loss, "logits": logits}
         
         return {'logits' : logits}
-=======
-            return (loss, logits)
-        return SimpleNamespace(logits=logits)
->>>>>>> c2d45e43e2ea516171e7bebcced8afb2e3473606
