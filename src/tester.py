@@ -72,7 +72,7 @@ if __name__ == "__main__":
     device = torch.device(device_name)
     n_runs = args.n_runs
     set_reproducible()
-    datadir = "./data/"
+    datadir = "../data/"
     trainfile =  datadir + "traindata.csv"
     devfile =  datadir + "devdata.csv"
     testfile = None
