@@ -2,7 +2,7 @@ from collections import Counter
 import torch
 import pandas as pd
 from datasets import Dataset
-from transformers import RobertaTokenizer, DataCollatorWithPadding
+from transformers import DataCollatorWithPadding
 
 
 def insert_word_tags(row):
@@ -17,9 +17,22 @@ def insert_word_tags(row):
 
 def create_dataset(df, labels, tokenizer):
 
+    # Fusion des colonnes pour l'entrée texte
+    df['input'] = df['catégorie'].astype(str) + ' : ' + df['texte'].astype(str)
+
+    # Suppression des lignes incomplètes
+    df = df.dropna(subset=['input', 'label'])
+
+    # Encodage des labels
+    labels = df['label'].unique()
+    label2id = {label: i for i, label in enumerate(labels)}
+    id2label = {i: label for label, i in label2id.items()}
+    df['label'] = df['label'].map(label2id)
+
     # Séparer les données en train/test sans sklearn
     train_df = df[:int(0.8 * len(df))]
     test_df = df[int(0.8 * len(df)):]
+
 
     # Calcul des poids inverses de fréquence
     label_counts = Counter(train_df['label'])
@@ -30,37 +43,37 @@ def create_dataset(df, labels, tokenizer):
 
 
     # Convertir en Dataset
-    train_ds = Dataset.from_pandas(train_df[['input', 'label']])
-    test_ds = Dataset.from_pandas(test_df[['input', 'label']])
+    train_ds = Dataset.from_pandas(train_df[['input', 'label', 'word']])
+    test_ds = Dataset.from_pandas(test_df[['input', 'label', 'word']])
 
-    # TOKENIZATION
+    # 2. Tokenization
     def tokenize(example):
         tokens = tokenizer(
             example["input"],
             truncation=True,
             padding="max_length",
-            return_attention_mask=True
+            return_attention_mask=True  # S'assure que l'attention mask est présent
         )
         tokens["label"] = example["label"]
         return tokens
+
 
     train_ds = train_ds.map(tokenize, batched=False)
     test_ds = test_ds.map(tokenize, batched=False)
 
 
-    # Suppress input column
+    # Suppression de la colonne brute "input"
     train_ds = train_ds.remove_columns(["input"])
     test_ds = test_ds.remove_columns(["input"])
 
-    # Rename the column to match the Trainer and data collator expectations
+    # Renommer la colonne pour qu'elle corresponde aux attentes du Trainer et du data collator
     train_ds = train_ds.rename_column("label", "labels")
     test_ds = test_ds.rename_column("label", "labels")
 
-    # Convert to torch format
+    # Convertir au format torch en spécifiant explicitement les colonnes
     train_ds.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
     test_ds.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
 
-    # Create data collator
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
 
