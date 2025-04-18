@@ -12,9 +12,9 @@ import os
 
 from transformers import RobertaConfig
 
-from create_dataset import create_dataset, insert_word_tags
-from model import RobertaForTaggedWordClassification
-from compute_metrics import compute_metrics
+from src.create_dataset import create_dataset, insert_word_tags
+from src.model import RobertaForTaggedWordClassification
+from src.compute_metrics import compute_metrics
 hf_token = os.getenv("HF_TOKEN")
 
 
@@ -65,24 +65,15 @@ class Classifier:
         df = pd.read_csv(train_filename, delimiter='\t', on_bad_lines='skip',
                          header=None, names=['label', 'catégorie', 'word', 'heure', 'texte'])
 
-        # PREPROCESSING DF
-        df['input'] = df['catégorie'].astype(str) + ' : ' + df['texte'].astype(str)
-        df = df.dropna(subset=['input', 'label'])
-
-        # Encoding of the labels
-        labels = df['label'].unique()
-        self.label2id = {label: i for i, label in enumerate(labels)}
-        self.id2label = {i: label for label, i in self.label2id.items()}
-        df['label'] = df['label'].map(self.label2id)
 
         tokenizer = RobertaTokenizer.from_pretrained("roberta-large", token=hf_token)
         tokenizer.add_tokens(["<W>", "</W>"])
 
         # Create datasets
-        train_ds, test_ds, data_collator, class_weights_tensor = create_dataset(df, labels, tokenizer)
+        train_ds, test_ds, data_collator, class_weights_tensor, n_labels = create_dataset(df, tokenizer)
 
         # Model and tokenizer
-        config = RobertaConfig.from_pretrained("roberta-base", num_labels=len(labels))
+        config = RobertaConfig.from_pretrained("roberta-base", num_labels=n_labels)
         
 
         self.model = RobertaForTaggedWordClassification.from_pretrained(

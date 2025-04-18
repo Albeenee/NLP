@@ -16,7 +16,7 @@ def insert_word_tags(row):
         return "ERROR"  # fallback si le mot n'est pas trouvé
 
 
-def create_dataset(df, labels, tokenizer):
+def create_dataset(df, tokenizer):
 
     # Fusion des colonnes pour l'entrée texte
     df['input'] = df['catégorie'].astype(str) + ' : ' + df['texte'].astype(str)
@@ -78,5 +78,5 @@ def create_dataset(df, labels, tokenizer):
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
 
-    return train_ds, test_ds, data_collator, class_weights_tensor
+    return train_ds, test_ds, data_collator, class_weights_tensor, len(labels)
 
