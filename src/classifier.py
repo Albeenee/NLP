@@ -75,11 +75,11 @@ class Classifier:
         self.id2label = id2label
 
         # Model and tokenizer
-        config = RobertaConfig.from_pretrained("roberta-base", num_labels=n_labels)
+        config = RobertaConfig.from_pretrained("roberta-large", num_labels=n_labels)
         
 
         self.model = RobertaForTaggedWordClassification.from_pretrained(
-            "roberta-base",
+            "roberta-large",
             config=config,
             tokenizer=self.tokenizer,
             class_weights=class_weights_tensor
