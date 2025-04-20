@@ -65,12 +65,8 @@ class Classifier:
         df = pd.read_csv(train_filename, delimiter='\t', on_bad_lines='skip',
                          header=None, names=['label', 'catégorie', 'word', 'heure', 'texte'])
 
-
-        tokenizer = RobertaTokenizer.from_pretrained("roberta-large", token=hf_token)
-        tokenizer.add_tokens(["<W>", "</W>"])
-
         # Create datasets
-        train_ds, test_ds, data_collator, class_weights_tensor, n_labels, label2id, id2label = create_dataset(df, tokenizer)
+        train_ds, test_ds, data_collator, class_weights_tensor, n_labels, label2id, id2label = create_dataset(df, self.tokenizer)
         self.label2id = label2id
         self.id2label = id2label
 
@@ -87,9 +83,6 @@ class Classifier:
 
         self.model.resize_token_embeddings(len(self.tokenizer))
         self.model.to(device)
-
-        print('device', self.model.parameters().__next__().device)
-        print('device', device)
 
         training_args = TrainingArguments(
             output_dir="./results",
