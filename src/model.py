@@ -1,13 +1,13 @@
-from transformers import RobertaTokenizer, RobertaForSequenceClassification 
+from transformers import RobertaTokenizer, RobertaForSequenceClassification, DebertaV2ForSequenceClassification
 import torch
 from torch.nn import CrossEntropyLoss
 from types import SimpleNamespace
 
 
-class RobertaForTaggedWordClassification(RobertaForSequenceClassification):
+class RobertaForTaggedWordClassification(DebertaV2ForSequenceClassification):
     def __init__(self, config, tokenizer, class_weights=None):
         super().__init__(config)
-        self.roberta = self.roberta 
+        self.deberta = DebertaV2ForSequenceClassification.from_pretrained("microsoft/deberta-v3-large", config=config)
         self.dropout = torch.nn.Dropout(config.hidden_dropout_prob)
         self.classifier = torch.nn.Linear(config.hidden_size, config.num_labels)
         self.tokenizer = tokenizer
@@ -22,10 +22,10 @@ class RobertaForTaggedWordClassification(RobertaForSequenceClassification):
         tokenizer = self.tokenizer
 
         kwargs.pop("num_items_in_batch", None)
-        outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask, **kwargs)
+        outputs = self.deberta(input_ids=input_ids, attention_mask=attention_mask, **kwargs)
 
-        last_hidden_state = outputs.last_hidden_state  # (batch_size, seq_len, hidden_size)
-
+        last_hidden_state = outputs[0] # (batch_size, seq_len, hidden_size)
+        print("last_hidden_state", last_hidden_state.shape)
         # Find the start and end token IDs for <W> and </W>
         w_token_id = tokenizer.convert_tokens_to_ids("<W>")
         end_w_token_id = tokenizer.convert_tokens_to_ids("</W>")

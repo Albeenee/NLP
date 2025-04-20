@@ -4,13 +4,12 @@ import torch
 from torch.utils.data import DataLoader
 import pandas as pd
 from datasets import Dataset
-from transformers import RobertaTokenizer, TrainingArguments, Trainer
-
+from transformers import RobertaTokenizer, TrainingArguments, Trainer, DebertaTokenizer, AutoTokenizer
 
 import numpy as np
 import os
 
-from transformers import RobertaConfig
+from transformers import RobertaConfig, DebertaConfig, DebertaV2Config
 
 from create_dataset import create_dataset, insert_word_tags
 from model import RobertaForTaggedWordClassification
@@ -39,12 +38,14 @@ class Classifier:
 
         os.environ["WANDB_MODE"] = "disabled"
 
-        self.tokenizer = RobertaTokenizer.from_pretrained("roberta-base", token=hf_token)
+        self.name = "microsoft/deberta-v3-large"  # Model name for the tokenizer and model
+        self.tokenizer = AutoTokenizer.from_pretrained(self.name , token=hf_token, use_fast=False)
         self.tokenizer.add_tokens(["<W>", "</W>"])
         self.model = None  # Initialized during train()
         self.trainer = None
         self.label2id = {}
         self.id2label = {}
+ 
       
 
     
@@ -65,21 +66,16 @@ class Classifier:
         df = pd.read_csv(train_filename, delimiter='\t', on_bad_lines='skip',
                          header=None, names=['label', 'catégorie', 'word', 'heure', 'texte'])
 
-
-        tokenizer = RobertaTokenizer.from_pretrained("roberta-large", token=hf_token)
-        tokenizer.add_tokens(["<W>", "</W>"])
-
         # Create datasets
-        train_ds, test_ds, data_collator, class_weights_tensor, n_labels, label2id, id2label = create_dataset(df, tokenizer)
+        train_ds, test_ds, data_collator, class_weights_tensor, n_labels, label2id, id2label = create_dataset(df, self.tokenizer)
         self.label2id = label2id
         self.id2label = id2label
 
         # Model and tokenizer
-        config = RobertaConfig.from_pretrained("roberta-large", num_labels=n_labels)
-        
+        config = DebertaV2Config.from_pretrained(self.name, num_labels=n_labels)
 
         self.model = RobertaForTaggedWordClassification.from_pretrained(
-            "roberta-large",
+            self.name,
             config=config,
             tokenizer=self.tokenizer,
             class_weights=class_weights_tensor
@@ -92,14 +88,14 @@ class Classifier:
         print('device', device)
 
         training_args = TrainingArguments(
-            output_dir="./results",
+            output_dir="/kaggle/working/results",
             eval_strategy="epoch",
             learning_rate=2e-5,
             per_device_train_batch_size=8,
             per_device_eval_batch_size=8,
             num_train_epochs=5,
             weight_decay=0.01,
-            logging_dir="./logs",
+            logging_dir="/kaggle/working/logs",
             logging_steps=10,
             save_strategy="no",
             report_to=None,  # Desactivate WandB
