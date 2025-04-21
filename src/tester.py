@@ -1,4 +1,4 @@
-import time, sys
+import time
 import numpy as np
 import argparse
 

@@ -1,20 +1,16 @@
 from typing import List
 
 import torch
-from torch.utils.data import DataLoader
 import pandas as pd
 from datasets import Dataset
-from transformers import RobertaTokenizer, TrainingArguments, Trainer
-
-
+from transformers import RobertaTokenizer, TrainingArguments, Trainer, RobertaConfig
 import numpy as np
 import os
-
-from transformers import RobertaConfig
 
 from create_dataset import create_dataset, insert_word_tags
 from model import RobertaForTaggedWordClassification
 from compute_metrics import compute_metrics
+
 hf_token = os.getenv("HF_TOKEN")
 
 

@@ -1,7 +1,6 @@
-from transformers import RobertaTokenizer, RobertaForSequenceClassification 
+from transformers import RobertaForSequenceClassification 
 import torch
 from torch.nn import CrossEntropyLoss
-from types import SimpleNamespace
 
 
 class RobertaForTaggedWordClassification(RobertaForSequenceClassification):

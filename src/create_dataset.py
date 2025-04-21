@@ -1,6 +1,5 @@
 from collections import Counter
 import torch
-import pandas as pd
 from datasets import Dataset
 from transformers import DataCollatorWithPadding
 
@@ -9,7 +8,7 @@ from transformers import DataCollatorWithPadding
 def insert_word_tags(row):
     word = row["word"]
     text = row["texte"]
-    # Insertion des balises <W> et </W> autour du mot
+    # Insert word tags in the text
     if word in text:
         return text.replace(word, f"<W>{word}</W>", 1)
     else:
